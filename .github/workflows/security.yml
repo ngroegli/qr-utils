@@ -46,8 +46,8 @@ jobs:
       - name: Run Safety (Dependency Vulnerability Scan)
         run: |
           echo "🔍 Scanning for known vulnerabilities in dependencies..."
-          safety check --json --output safety-report.json || true
-          safety check --short-report
+          safety scan --output json --save-as safety-report.json || true
+          safety scan --short
 
       - name: Upload Safety Report
         if: always()
@@ -161,7 +161,7 @@ jobs:
           # Check if reports exist and summarize
           if [ -f "security-reports/safety-vulnerability-report/safety-report.json" ]; then
             echo "### 📦 Dependency Vulnerabilities (Safety)" >> $GITHUB_STEP_SUMMARY
-            vulnerabilities=$(cat security-reports/safety-vulnerability-report/safety-report.json | jq '.vulnerabilities | length' || echo "0")
+            vulnerabilities=$(jq '[.. | objects | .vulnerabilities? // empty] | add // [] | length' security-reports/safety-vulnerability-report/safety-report.json 2>/dev/null || echo "0")
             echo "- Found: **$vulnerabilities** known vulnerabilities" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
@@ -193,7 +193,7 @@ jobs:
 
           # Check Safety report for critical vulnerabilities
           if [ -f "security-reports/safety-vulnerability-report/safety-report.json" ]; then
-            vulnerabilities=$(cat security-reports/safety-vulnerability-report/safety-report.json | jq '.vulnerabilities | length' || echo "0")
+            vulnerabilities=$(jq '[.. | objects | .vulnerabilities? // empty] | add // [] | length' security-reports/safety-vulnerability-report/safety-report.json 2>/dev/null || echo "0")
             if [ "$vulnerabilities" -gt 5 ]; then
               echo "❌ Too many dependency vulnerabilities found: $vulnerabilities"
               critical_found=true
