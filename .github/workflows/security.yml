@@ -41,20 +41,20 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          pip install safety bandit semgrep
+          pip install pip-audit bandit
 
-      - name: Run Safety (Dependency Vulnerability Scan)
+      - name: Run pip-audit (Dependency Vulnerability Scan)
         run: |
           echo "🔍 Scanning for known vulnerabilities in dependencies..."
-          safety check --json --output safety-report.json || true
-          safety check --short-report
+          pip-audit -r requirements.txt --format json --output pip-audit-report.json || true
+          pip-audit -r requirements.txt
 
-      - name: Upload Safety Report
+      - name: Upload pip-audit Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: safety-vulnerability-report
-          path: safety-report.json
+          path: pip-audit-report.json
           retention-days: 30
 
   code-security-scan:
@@ -159,9 +159,9 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # Check if reports exist and summarize
-          if [ -f "security-reports/safety-vulnerability-report/safety-report.json" ]; then
-            echo "### 📦 Dependency Vulnerabilities (Safety)" >> $GITHUB_STEP_SUMMARY
-            vulnerabilities=$(cat security-reports/safety-vulnerability-report/safety-report.json | jq '.vulnerabilities | length' || echo "0")
+          if [ -f "security-reports/safety-vulnerability-report/pip-audit-report.json" ]; then
+            echo "### 📦 Dependency Vulnerabilities (pip-audit)" >> $GITHUB_STEP_SUMMARY
+            vulnerabilities=$(jq '[.dependencies[].vulns[]] | length' security-reports/safety-vulnerability-report/pip-audit-report.json 2>/dev/null || echo "0")
             echo "- Found: **$vulnerabilities** known vulnerabilities" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
           fi
@@ -192,8 +192,8 @@ jobs:
           critical_found=false
 
           # Check Safety report for critical vulnerabilities
-          if [ -f "security-reports/safety-vulnerability-report/safety-report.json" ]; then
-            vulnerabilities=$(cat security-reports/safety-vulnerability-report/safety-report.json | jq '.vulnerabilities | length' || echo "0")
+          if [ -f "security-reports/safety-vulnerability-report/pip-audit-report.json" ]; then
+            vulnerabilities=$(jq '[.dependencies[].vulns[]] | length' security-reports/safety-vulnerability-report/pip-audit-report.json 2>/dev/null || echo "0")
             if [ "$vulnerabilities" -gt 5 ]; then
               echo "❌ Too many dependency vulnerabilities found: $vulnerabilities"
               critical_found=true
