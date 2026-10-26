@@ -74,17 +74,15 @@ check_python() {
     fi
 }
 
-check_pip() {
-    print_step "Checking pip installation..."
+check_venv_support() {
+    print_step "Checking venv support..."
 
-    if command -v pip3 &> /dev/null; then
-        print_success "pip3 found"
-        PIP_CMD="pip3"
-    elif command -v pip &> /dev/null; then
-        print_success "pip found"
-        PIP_CMD="pip"
+    # pip is provided inside the virtual environment, so no system pip is needed
+    if $PYTHON_CMD -c 'import venv, ensurepip' &> /dev/null; then
+        print_success "venv module available"
     else
-        print_error "pip not found. Please install pip."
+        print_error "Python venv module not available."
+        print_error "On Debian/Ubuntu install it with: sudo apt install python3-venv"
         exit 1
     fi
 }
@@ -138,8 +136,8 @@ install_dependencies() {
     source "$VENV_DIR/bin/activate"
 
     if [ -f "$SCRIPT_DIR/requirements.txt" ]; then
-        pip install --upgrade pip
-        pip install -r "$SCRIPT_DIR/requirements.txt"
+        python -m pip install --upgrade pip
+        python -m pip install -r "$SCRIPT_DIR/requirements.txt"
         print_success "Dependencies installed successfully"
     else
         print_error "requirements.txt not found"
@@ -241,7 +239,7 @@ main() {
     print_header
 
     check_python
-    check_pip
+    check_venv_support
     create_venv
     create_directories
     install_dependencies
